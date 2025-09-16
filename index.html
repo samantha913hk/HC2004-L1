@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacokinetics Quiz Challenge</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        #quiz-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 650px;
+            padding: 30px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .screen {
+            display: none;
+        }
+        #start-screen {
+            display: block;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 15px 5px 5px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        #options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .option-btn {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            border: 2px solid #bdc3c7;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover {
+            background-color: #d6dbdf;
+            border-color: #95a5a6;
+        }
+        .option-btn.correct {
+            background-color: #2ecc71;
+            color: white;
+            border-color: #27ae60;
+        }
+        .option-btn.incorrect {
+            background-color: #e74c3c;
+            color: white;
+            border-color: #c0392b;
+        }
+        #timer-container {
+            height: 8px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        #timer-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 100%;
+            transition: width 1s linear;
+        }
+        #progress {
+            font-weight: 600;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        #score-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+        #question-text {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+        #feedback {
+            font-weight: 600;
+            margin: 15px 0;
+            min-height: 24px;
+        }
+        .correct-feedback {
+            color: #27ae60;
+        }
+        .incorrect-feedback {
+            color: #c0392b;
+        }
+        #calculation-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+            border-radius: 0 8px 8px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h1>Pharmacokinetics Quiz</h1>
+            <p>Test your knowledge on drug absorption, distribution, metabolism, and excretion. You have 60 seconds per question!</p>
+            <p><strong>Topics:</strong> ADME, Agonists/Antagonists, Bioavailability, Half-Life, V<sub>d</sub>, Drug Interactions</p>
+            <button id="start-btn" class="btn">Start Quiz</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div id="progress">Question <span id="current-question">1</span> of 15</div>
+            <div id="timer-container">
+                <div id="timer-bar"></div>
+            </div>
+            <div id="question-text"></div>
+            <div id="calculation-box"></div>
+            <div id="options-container"></div>
+            <div id="feedback"></div>
+            <button id="next-btn" class="btn" style="display: none;">Next Question</button>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="screen">
+            <h1>Quiz Complete!</h1>
+            <div id="score-display">Your score: <span id="final-score">0</span>/15</div>
+            <button id="restart-btn" class="btn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Question pool based on the provided lecture notes
+        const questionPool = [
+            {
+                question: "What does the acronym ADME stand for in pharmacokinetics?",
+                options: [
+                    "Absorption, Distribution, Metabolism, Excretion",
+                    "Agonists, Distribution, Molecules, Excretion",
+                    "Analysis, Dosage, Medication, Effect",
+                    "Administration, Dilution, Mixing, Expulsion"
+                ],
+                answer: 0,
+                explanation: "ADME is the cornerstone of pharmacokinetics, describing the journey of a drug through the body: Absorption into the bloodstream, Distribution to tissues, Metabolism (biotransformation), and Excretion from the body."
+            },
+            {
+                question: "A drug that binds to a receptor and activates it to produce a biological response is called a(n):",
+                options: [
+                    "Agonist",
+                    "Antagonist",
+                    "Inhibitor",
+                    "Blocker"
+                ],
+                answer: 0,
+                explanation: "An agonist is a substance that binds to a receptor and activates it, mimicking the effect of the body's natural ligands (like hormones or neurotransmitters). Salbutamol is an example of a beta-2 adrenergic receptor agonist."
+            },
+            {
+                question: "Propranolol, which binds to beta receptors and blocks the action of adrenaline, is an example of a(n):",
+                options: [
+                    "Antagonist",
+                    "Agonist",
+                    "Partial Agonist",
+                    "Enhancer"
+                ],
+                answer: 0,
+                explanation: "An antagonist binds to a receptor but does not activate it. Instead, it blocks the receptor from being activated by agonists. Propranolol is a non-selective beta-blocker (antagonist)."
+            },
+            {
+                question: "What is the definition of bioavailability (F)?",
+                options: [
+                    "The fraction of a drug dose that reaches systemic circulation unchanged",
+                    "The total amount of drug administered by any route",
+                    "The time it takes for a drug to reach its maximum plasma concentration",
+                    "The volume of bodily fluid a drug dissolves into"
+                ],
+                answer: 0,
+                explanation: "Bioavailability (F) is defined as the fraction of an administered drug that reaches the systemic circulation in its unchanged, active form. Intravenous administration has 100% bioavailability, while oral routes vary from 0-100% due to factors like first-pass metabolism."
+            },
+            {
+                question: "The 'First-Pass Effect' primarily occurs with which route of administration and involves which organ?",
+                options: [
+                    "Oral administration; Liver",
+                    "Intravenous administration; Kidneys",
+                    "Sublingual administration; Liver",
+                    "Topical administration; Skin"
+                ],
+                answer: 0,
+                explanation: "After oral administration, drugs are absorbed and cross directly into the hepatic portal circulation, going straight to the liver. Here, a large number of drugs can be inactivated by hepatic metabolic reactions before they even reach the systemic circulation and their target site."
+            },
+            {
+                question: "Calculate the Volume of Distribution (Vd). A patient received a single IV dose of 250 mg of a drug. The immediate plasma concentration is measured at 5 mg/L. What is the Vd?",
+                options: [
+                    "50 L",
+                    "0.02 L",
+                    "1250 L",
+                    "5 L"
+                ],
+                answer: 0,
+                explanation: "Vd = Dose / Plasma Concentration. Therefore, Vd = 250 mg / 5 mg/L = 50 L. This represents the theoretical volume the drug appears to be distributed in."
+            },
+            {
+                question: "Only the _____ form of a drug in the plasma is able to cross membranes to reach its target site or be excreted.",
+                options: [
+                    "Free (unbound)",
+                    "Protein-bound",
+                    "Ionized",
+                    "Metabolized"
+                ],
+                answer: 0,
+                explanation: "Drugs often bind reversibly to plasma proteins (like albumin). This drug-protein complex is too large to cross capillary membranes and is therefore 'trapped' in the bloodstream. Only the unbound, free drug is pharmacologically active and available for distribution or excretion."
+            },
+            {
+                question: "The half-life (t½) of a drug is 6 hours. If the initial plasma concentration is 100 mg/L, what will the concentration be after 18 hours?",
+                options: [
+                    "12.5 mg/L",
+                    "25 mg/L",
+                    "50 mg/L",
+                    "0 mg/L"
+                ],
+                answer: 0,
+                explanation: "18 hours represents three half-lives (18 / 6 = 3). After first half-life: 50 mg/L. After second: 25 mg/L. After third: 12.5 mg/L."
+            },
+            {
+                question: "Which of the following factors would likely INCREASE the half-life of a drug?",
+                options: [
+                    "Extensive plasma protein binding",
+                    "Induction of metabolic enzymes",
+                    "Increased renal blood flow",
+                    "Converting to inactive metabolites"
+                ],
+                answer: 0,
+                explanation: "If a drug is extensively bound to plasma proteins, it is not available for metabolism or excretion. It is slowly released from the proteins, prolonging its time in the body and thus increasing its half-life. Enzyme induction (B) and increased excretion (C) would decrease half-life."
+            },
+            {
+                question: "The term 'Therapeutic Window' refers to:",
+                options: [
+                    "The range of plasma concentrations between efficacy and toxicity",
+                    "The time of day a drug is most effective",
+                    "The specific location a drug targets in the body",
+                    "The route of administration with the fewest side effects"
+                ],
+                answer: 0,
+                explanation: "The therapeutic window is the range of drug concentrations in the plasma between the Minimum Effective Concentration (MEC) for the desired effect and the Minimum Toxic Concentration (MTC). Drugs with a narrow therapeutic window require careful dosing and monitoring."
+            },
+            {
+                question: "A Type A Adverse Drug Reaction (ADR) is best described as:",
+                options: [
+                    "Dose-dependent, predictable, and related to the drug's pharmacology",
+                    "A rare, unpredictable allergic reaction",
+                    "A delayed effect like carcinogenicity",
+                    "A reaction that occurs on withdrawal of the drug"
+                ],
+                answer: 0,
+                explanation: "Type A (Augmented) reactions are the most common type (~75%). They are dose-dependent, predictable from the drug's known pharmacological effects, and are often manageable by reducing the dose. Examples include hypotension from antihypertensives or hypoglycemia from insulin."
+            },
+            {
+                question: "The interaction where Itraconazole (an antifungal) inhibits the metabolism of Digoxin (a heart drug), leading to increased Digoxin levels and potential toxicity, is an example of a:",
+                options: [
+                    "Pharmacokinetic Interaction (affecting metabolism)",
+                    "Pharmacodynamic Interaction (additive effect)",
+                    "Pharmacodynamic Interaction (antagonistic effect)",
+                    "Pharmaceutical Interaction (incompatibility)"
+                ],
+                answer: 0,
+                explanation: "This is a pharmacokinetic interaction because one drug (Itraconazole) alters the metabolism of another (Digoxin), specifically by inhibiting the enzymes that break Digoxin down. This increases the plasma concentration and effect of Digoxin."
+            },
+            {
+                question: "Which pair of drugs is an example of a pharmacodynamic ANTAGONISTIC interaction?",
+                options: [
+                    "Salbutamol (β2-agonist) and Propranolol (non-selective β-blocker)",
+                    "ACE Inhibitor and Spironolactone (both can increase potassium)",
+                    "Sildenafil and Nitrates (both cause vasodilation)",
+                    "Rifampicin and Dabigatran (Rifampicin induces Dabigatran's metabolism)"
+                ],
+                answer: 0,
+                explanation: "Salbutamol is a beta-2 agonist that causes bronchodilation. Propranolol, a non-selective beta-blocker (antagonist), blocks beta-2 receptors, thereby antagonizing and reducing the bronchodilatory effect of Salbutamol. This is a direct pharmacodynamic antagonism at the receptor level."
+            },
+            {
+                question: "Taking Tetracycline antibiotics with dairy products (high in Ca²⁺) can lead to:",
+                options: [
+                    "Reduced absorption of the antibiotic",
+                    "Increased absorption of the antibiotic",
+                    "Enhanced metabolism of the antibiotic",
+                    "Faster excretion of the antibiotic"
+                ],
+                answer: 0,
+                explanation: "This is a pharmacokinetic interaction affecting absorption. Divalent cations like Ca²⁺ (in dairy), Fe²⁺, and Mg²⁺ can form insoluble complexes with Tetracyclines in the gut, significantly reducing their absorption and making the therapy ineffective."
+            },
+            {
+                question: "A drug's Volume of Distribution (Vd) is primarily a reflection of:",
+                options: [
+                    "The drug's tendency to reside in tissues vs. plasma",
+                    "The total blood volume of the patient",
+                    "The rate of drug elimination by the kidneys",
+                    "The lipid solubility of the drug alone"
+                ],
+                answer: 0,
+                explanation: "Volume of Distribution is a theoretical concept that relates the amount of drug in the body to its concentration in the plasma. A high Vd suggests the drug is widely distributed in the tissues beyond the plasma. A low Vd suggests the drug is mostly confined to the plasma compartment."
+            }
+        ];
+
+        // DOM Elements
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startBtn = document.getElementById('start-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const questionText = document.getElementById('question-text');
+        const calculationBox = document.getElementById('calculation-box');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackEl = document.getElementById('feedback');
+        const progressEl = document.getElementById('current-question');
+        const timerBar = document.getElementById('timer-bar');
+        const finalScoreEl = document.getElementById('final-score');
+
+        // Game State Variables
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+        let timeLeft;
+
+        // Initialize and start the game
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        nextBtn.addEventListener('click', nextQuestion);
+
+        function startGame() {
+            // Reset game state
+            score = 0;
+            currentQuestionIndex = 0;
+            
+            // Create a shuffled copy of the question pool
+            currentQuestions = [...questionPool].sort(() => Math.random() - 0.5);
+            
+            // Show game screen, hide others
+            startScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            
+            // Load the first question
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // Reset UI state
+            resetState();
+            
+            const currentQ = currentQuestions[currentQuestionIndex];
+            
+            // Update progress
+            progressEl.textContent = currentQuestionIndex + 1;
+            
+            // Display the question
+            questionText.innerHTML = currentQ.question;
+            
+            // Display calculation box if applicable (simple check for key terms)
+            if (currentQ.question.includes("Calculate") || currentQ.question.includes("Vd") || currentQ.question.includes("half-life")) {
+                calculationBox.style.display = 'block';
+                calculationBox.textContent = "Hint: Remember your key formulas. Vd = Dose / Cp. t½ = 0.693 / K.";
+            } else {
+                calculationBox.style.display = 'none';
+            }
+            
+            // Create shuffled answer options
+            const shuffledOptions = [...currentQ.options];
+            // We need to track the new index of the correct answer after shuffling
+            let correctAnswerIndex;
+            
+            // Shuffle options and find the new correct index
+            for (let i = shuffledOptions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+            }
+            // Find the new index of the correct answer text
+            correctAnswerIndex = shuffledOptions.indexOf(currentQ.options[currentQ.answer]);
+            
+            // Create buttons for each option
+            shuffledOptions.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.classList.add('option-btn');
+                button.innerHTML = option;
+                button.addEventListener('click', () => selectAnswer(index, correctAnswerIndex));
+                optionsContainer.appendChild(button);
+            });
+            
+            // Start the timer
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = 60; // 60 seconds per question
+            timerBar.style.width = '100%';
+            timerBar.style.backgroundColor = '#3498db';
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                timerBar.style.width = (timeLeft / 60 * 100) + '%';
+                
+                // Change color when time is running low
+                if (timeLeft < 15) {
+                    timerBar.style.backgroundColor = '#e74c3c';
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleTimeUp();
+                }
+            }, 1000);
+        }
+
+        function handleTimeUp() {
+            const correctIndex = currentQuestions[currentQuestionIndex].answer;
+            // Disable all options
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+            allButtons.forEach(button => {
+                button.disabled = true;
+            });
+            // Highlight the correct answer
+            allButtons[correctIndex].classList.add('correct');
+            
+            feedbackEl.textContent = "⏰ Time's up! " + currentQuestions[currentQuestionIndex].explanation;
+            feedbackEl.className = 'incorrect-feedback';
+            nextBtn.style.display = 'block';
+        }
+
+        function selectAnswer(selectedIndex, correctIndex) {
+            clearInterval(timer); // Stop the timer
+            
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+            allButtons.forEach(button => {
+                button.disabled = true;
+            });
+            
+            if (selectedIndex === correctIndex) {
+                // Correct answer
+                allButtons[selectedIndex].classList.add('correct');
+                feedbackEl.textContent = "✅ Correct! " + currentQuestions[currentQuestionIndex].explanation;
+                feedbackEl.className = 'correct-feedback';
+                score++;
+            } else {
+                // Incorrect answer
+                allButtons[selectedIndex].classList.add('incorrect');
+                allButtons[correctIndex].classList.add('correct');
+                feedbackEl.textContent = "❌ Incorrect. " + currentQuestions[currentQuestionIndex].explanation;
+                feedbackEl.className = 'incorrect-feedback';
+            }
+            
+            nextBtn.style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < currentQuestions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            // Show end screen, hide others
+            gameScreen.style.display = 'none';
+            endScreen.style.display = 'block';
+            
+            // Display final score
+            finalScoreEl.textContent = score;
+        }
+
+        function resetState() {
+            // Clear feedback, hide next button, reset options
+            nextBtn.style.display = 'none';
+            feedbackEl.textContent = '';
+            feedbackEl.className = '';
+            while (optionsContainer.firstChild) {
+                optionsContainer.removeChild(optionsContainer.firstChild);
+            }
+            
+            // Clear any existing timer
+            if (timer) {
+                clearInterval(timer);
+            }
+        }
+    </script>
+</body>
+</html>
